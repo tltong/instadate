@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "514380820902",
+    "project_id": "instadate-now",
+    "storage_bucket": "instadate-now.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514380820902:android:3865590dc23bf50c8e9f67",
+        "android_client_info": {
+          "package_name": "com.example.instadate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQmPY9w4wjtNkMdmVr6hpwbmvdpFJPN4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
