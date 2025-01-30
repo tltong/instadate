@@ -6,6 +6,7 @@ import 'package:instadate/Landing/LandingPage.dart';
 import 'package:instadate/Profile/ProfilePage.dart'; // Import ProfilePage
 import 'package:instadate/Profile/EditProfilePage.dart'; // Import EditProfilePage
 import 'package:instadate/SignIn/SignInScreen.dart'; // Import SignInScreen
+import 'package:instadate/Dates/CreateDate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding
@@ -38,7 +39,10 @@ class MyApp extends StatelessWidget {
               userData: ModalRoute.of(context)!.settings.arguments
                   as Map<String, dynamic>,
             ),
-        '/signin': (context) => SignInScreen(), // Add sign in route
+        '/signin': (context) => SignInScreen(),
+        '/createdate': (context) => CreateDate(
+              email: ModalRoute.of(context)!.settings.arguments as String,
+            ),
       },
     );
   }
@@ -169,6 +173,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.pushNamed(context, '/signin');
                     },
                     child: const Text('Sign In'),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      String email = _emailController.text.trim();
+
+                      if (email.isNotEmpty) {
+                        Navigator.pushNamed(context, '/createdate',
+                            arguments: email); // Pass email as argument
+                      }
+                    },
+                    child: const Text('Create Date'),
                   ),
                 ],
               ),
