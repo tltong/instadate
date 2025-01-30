@@ -24,7 +24,7 @@ class _CreateDateState extends State<CreateDate> {
   String? _selectedOpenTo;
   String? _selectedDateType;
   LatLng? _selectedLatLng;
-  String? _googleMapsUrl; // Store the Google Maps URL
+  String? _googleMapsUrl;
   final TextEditingController _locationController = TextEditingController();
   List<Map<String, dynamic>> _locationSuggestions = [];
   Timer? _debounce;
@@ -43,217 +43,236 @@ class _CreateDateState extends State<CreateDate> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Create Date')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Date Type'), // New section for "Date Type"
-
-            const SizedBox(height: 8.0),
-
-            DropdownButton<String>(
-              value: _selectedDateType,
-              hint: const Text('Select Date Type'),
-              items: <String>[
-                'Coffee',
-                'Lunch',
-                'Dinner',
-                'Movie',
-                'Casual Hangout',
-                'Wine and Music',
-                'Active',
-                'Cultural',
-                'Exhibition',
-                'Others',
-                'Getaway',
-                'Extra Special',
-              ].map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedDateType = newValue;
-                });
-              },
-            ),
-
-            const SizedBox(height: 16.0),
-            const Text('Date and Time'),
-            const SizedBox(height: 8.0),
-            Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selectDate(context),
-                    child: Text(_selectedDate != null
-                        ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
-                        : 'Select Date'),
+                _buildDropdown(
+                    "Date Type",
+                    _selectedDateType,
+                    [
+                      'Coffee',
+                      'Lunch',
+                      'Dinner',
+                      'Movie',
+                      'Casual Hangout',
+                      'Wine and Music',
+                      'Active',
+                      'Cultural',
+                      'Others',
+                      'Getaway',
+                      'Extra Special',
+                    ],
+                    (value) => setState(() => _selectedDateType = value)),
+
+                const SizedBox(height: 16.0),
+                _buildDateAndTimePicker(),
+
+                _buildDropdown(
+                    "Duration",
+                    _selectedDuration,
+                    [
+                      '1 hour',
+                      '2 hours',
+                      '3 hours',
+                      '4 hours or more',
+                      'Let\'s go with the flow',
+                    ],
+                    (value) => setState(() => _selectedDuration = value)),
+
+                _buildDropdown(
+                    "Who Pays",
+                    _selectedWhoPays,
+                    [
+                      'I pay',
+                      'You pay',
+                      'Let\'s split',
+                    ],
+                    (value) => setState(() => _selectedWhoPays = value)),
+
+                _buildDropdown(
+                    "Date is Open To",
+                    _selectedOpenTo,
+                    [
+                      'Men',
+                      'Women',
+                      'Men and Women',
+                    ],
+                    (value) => setState(() => _selectedOpenTo = value)),
+
+                _buildTextField("Description", _description, (value) {
+                  setState(() => _description = value);
+                }),
+
+                const SizedBox(height: 16.0),
+                const Text('Location'),
+                const SizedBox(height: 8.0),
+
+                // Multi-line Location Input
+                TextField(
+                  controller: _locationController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search for a location',
+                    border: OutlineInputBorder(),
                   ),
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  onChanged: _getLocationSuggestions,
                 ),
-                const SizedBox(width: 16.0),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selectTime(context),
-                    child: Text(_selectedTime != null
-                        ? _selectedTime!.format(context)
-                        : 'Select Time'),
+
+                if (_googleMapsUrl != null) ...[
+                  const SizedBox(height: 8.0),
+                  GestureDetector(
+                    onTap: () => _openGoogleMaps(_googleMapsUrl!),
+                    child: Text(
+                      "📍 View Location on Google Maps",
+                      style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline),
+                    ),
                   ),
+                ],
+
+                const SizedBox(height: 8.0),
+                _buildLocationSuggestions(),
+
+                const SizedBox(height: 32.0),
+                ElevatedButton(
+                  onPressed: _saveDateToFirestore,
+                  child: const Text('Create Date'),
                 ),
               ],
             ),
-            const SizedBox(height: 16.0),
-            const Text('Duration'),
-            const SizedBox(height: 8.0),
-            DropdownButton<String>(
-              value: _selectedDuration,
-              hint: const Text('Select Duration'),
-              items: <String>[
-                '< 1 hour',
-                '1 hour',
-                '2 hours',
-                '3 hours',
-                '4 hours or more',
-                'Let\'s go with the flow',
-              ].map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedDuration = newValue;
-                });
-              },
-            ),
-            const SizedBox(height: 16.0),
-
-            const Text('Who Pays'), // New section for "Who Pays"
-
-            const SizedBox(height: 8.0),
-
-            DropdownButton<String>(
-              value: _selectedWhoPays,
-              hint: const Text('Select Who Pays'),
-              items: <String>[
-                'I pay',
-                'You pay',
-                'Let\'s split',
-              ].map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedWhoPays = newValue;
-                });
-              },
-            ),
-
-            const SizedBox(height: 16.0),
-
-            const Text('Date is open to'), // New section for "Date is open to"
-
-            const SizedBox(height: 8.0),
-
-            DropdownButton<String>(
-              value: _selectedOpenTo,
-              hint: const Text('Select Open To'),
-              items: <String>[
-                'Men',
-                'Women',
-                'Men and Women',
-              ].map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedOpenTo = newValue;
-                });
-              },
-            ),
-
-            const SizedBox(height: 16.0),
-            const Text('Description'),
-            const SizedBox(height: 8.0),
-            TextField(
-              onChanged: (value) => setState(() => _description = value),
-              decoration:
-                  const InputDecoration(hintText: 'Enter a description'),
-            ),
-            const SizedBox(height: 16.0),
-            const Text('Location'),
-            const SizedBox(height: 8.0),
-            TextField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                hintText: 'Search for a location',
-                border:
-                    OutlineInputBorder(), // Optional: Adds a border for better UI
-              ),
-              maxLines: null, // Allows multiple lines
-              keyboardType: TextInputType.multiline, // Enables multi-line input
-              onChanged: _getLocationSuggestions,
-            ),
-            const SizedBox(height: 8.0),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _locationSuggestions.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(_locationSuggestions[index]['description']),
-                    onTap: () => _selectLocation(_locationSuggestions[index]),
-                  );
-                },
-              ),
-            ),
-            if (_googleMapsUrl != null) ...[
-              const SizedBox(height: 8.0),
-              GestureDetector(
-                onTap: () => _openGoogleMaps(_googleMapsUrl!),
-                child: Text(
-                  "Open in Google Maps",
-                  style: TextStyle(
-                      color: Colors.blue, decoration: TextDecoration.underline),
-                ),
-              ),
-            ],
-            const SizedBox(height: 32.0),
-            ElevatedButton(
-              onPressed: _saveDateToFirestore,
-              child: const Text('Create Date'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+  Widget _buildDropdown(String title, String? selectedValue, List<String> items,
+      Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title),
+        const SizedBox(height: 8.0),
+        DropdownButton<String>(
+          value: selectedValue,
+          hint: Text('Select $title'),
+          items: items.map((value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ],
     );
-    if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? const TimeOfDay(hour: 12, minute: 0),
+  Widget _buildDateAndTimePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Date and Time'),
+        const SizedBox(height: 8.0),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => _selectDate(context),
+                child: Text(_selectedDate != null
+                    ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                    : 'Select Date'),
+              ),
+            ),
+            const SizedBox(width: 16.0),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => _selectTime(context),
+                child: Text(_selectedTime != null
+                    ? _selectedTime!.format(context)
+                    : 'Select Time'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
-    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  Widget _buildTextField(
+      String title, String? value, Function(String) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title),
+        const SizedBox(height: 8.0),
+        TextField(
+          onChanged: onChanged,
+          decoration: InputDecoration(hintText: 'Enter $title'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSuggestions() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: _locationSuggestions.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(_locationSuggestions[index]['description']),
+            onTap: () => _selectLocation(_locationSuggestions[index]),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openGoogleMaps(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      print("Could not open Google Maps");
+    }
+  }
+
+  Future<void> _selectLocation(Map<String, dynamic> selectedLocation) async {
+    String locationName = selectedLocation["description"];
+    _locationController.text = locationName;
+    setState(() => _locationSuggestions = []);
+
+    try {
+      final response = await Dio().get(
+        "https://maps.googleapis.com/maps/api/place/details/json",
+        queryParameters: {
+          "place_id": selectedLocation["place_id"],
+          "key": _googleApiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        var location = response.data["result"]["geometry"]["location"];
+        double lat = location["lat"];
+        double lng = location["lng"];
+
+        setState(() {
+          _selectedLatLng = LatLng(lat, lng);
+          _googleMapsUrl =
+              "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName)}";
+        });
+      }
+    } catch (e) {
+      print("Error fetching location details: $e");
+    }
   }
 
   Future<void> _getLocationSuggestions(String query) async {
@@ -292,62 +311,25 @@ class _CreateDateState extends State<CreateDate> {
     });
   }
 
-  Future<void> _selectLocation(Map<String, dynamic> selectedLocation) async {
-    String locationName = selectedLocation["description"];
-    _locationController.text = locationName;
-    setState(() => _locationSuggestions = []);
-
-    try {
-      final response = await Dio().get(
-        "https://maps.googleapis.com/maps/api/place/details/json",
-        queryParameters: {
-          "place_id": selectedLocation["place_id"],
-          "key": _googleApiKey,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        var location = response.data["result"]["geometry"]["location"];
-        double lat = location["lat"];
-        double lng = location["lng"];
-
-        setState(() {
-          _selectedLatLng = LatLng(lat, lng);
-          _googleMapsUrl =
-              "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName)}";
-        });
-      }
-    } catch (e) {
-      print("Error fetching location details: $e");
-    }
+  Future<void> _selectDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  void _openGoogleMaps(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
-    } else {
-      print("Could not open Google Maps");
-    }
+  Future<void> _selectTime(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (picked != null) setState(() => _selectedTime = picked);
   }
 
   Future<void> _saveDateToFirestore() async {
-    if (_selectedDate == null ||
-        _selectedTime == null ||
-        _description == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
-      return;
-    }
-
-    DateTime finalDateTime = DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
-    );
-
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.email)
@@ -355,7 +337,7 @@ class _CreateDateState extends State<CreateDate> {
         .doc();
 
     await docRef.set({
-      'date': Timestamp.fromDate(finalDateTime),
+      'date': Timestamp.fromDate(_selectedDate!),
       'description': _description,
       'location': _locationController.text,
       'latitude': _selectedLatLng?.latitude,
@@ -363,6 +345,7 @@ class _CreateDateState extends State<CreateDate> {
       'duration': _selectedDuration,
       'whoPays': _selectedWhoPays,
       'openTo': _selectedOpenTo,
+      'dateType': _selectedDateType,
     });
 
     Navigator.pop(context);
