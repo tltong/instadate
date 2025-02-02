@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:instadate/Dates/DateHandler.dart';
 
 class CreateDate extends StatefulWidget {
   final String email;
@@ -28,6 +29,8 @@ class _CreateDateState extends State<CreateDate> {
   final TextEditingController _locationController = TextEditingController();
   List<Map<String, dynamic>> _locationSuggestions = [];
   Timer? _debounce;
+  final DateHandler _dateHandler = DateHandler();
+  bool _showErrors = false; // Flag for showing validation errors
 
   final String _googleApiKey =
       "AIzaSyAz5wgFHrAJ7ZxVHg6EBwtLGMg1NqsMlkc"; // Replace with your API key
@@ -68,10 +71,7 @@ class _CreateDateState extends State<CreateDate> {
                       'Extra Special',
                     ],
                     (value) => setState(() => _selectedDateType = value)),
-
-                const SizedBox(height: 16.0),
                 _buildDateAndTimePicker(),
-
                 _buildDropdown(
                     "Duration",
                     _selectedDuration,
@@ -83,7 +83,6 @@ class _CreateDateState extends State<CreateDate> {
                       'Let\'s go with the flow',
                     ],
                     (value) => setState(() => _selectedDuration = value)),
-
                 _buildDropdown(
                     "Who Pays",
                     _selectedWhoPays,
@@ -93,7 +92,6 @@ class _CreateDateState extends State<CreateDate> {
                       'Let\'s split',
                     ],
                     (value) => setState(() => _selectedWhoPays = value)),
-
                 _buildDropdown(
                     "Date is Open To",
                     _selectedOpenTo,
@@ -103,46 +101,14 @@ class _CreateDateState extends State<CreateDate> {
                       'Men and Women',
                     ],
                     (value) => setState(() => _selectedOpenTo = value)),
-
                 _buildTextField("Description", _description, (value) {
                   setState(() => _description = value);
                 }),
-
-                const SizedBox(height: 16.0),
-                const Text('Location'),
-                const SizedBox(height: 8.0),
-
-                // Multi-line Location Input
-                TextField(
-                  controller: _locationController,
-                  decoration: const InputDecoration(
-                    hintText: 'Search for a location',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  onChanged: _getLocationSuggestions,
-                ),
-
-                if (_googleMapsUrl != null) ...[
-                  const SizedBox(height: 8.0),
-                  GestureDetector(
-                    onTap: () => _openGoogleMaps(_googleMapsUrl!),
-                    child: Text(
-                      "📍 View Location on Google Maps",
-                      style: TextStyle(
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 8.0),
+                _buildLocationInput(),
                 _buildLocationSuggestions(),
-
                 const SizedBox(height: 32.0),
                 ElevatedButton(
-                  onPressed: _saveDateToFirestore,
+                  onPressed: _validateAndSaveDate,
                   child: const Text('Create Date'),
                 ),
               ],
@@ -153,16 +119,59 @@ class _CreateDateState extends State<CreateDate> {
     );
   }
 
+  Widget _buildTextField(
+      String title, String? value, Function(String) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(title),
+            if (_showErrors && (value == null || value.isEmpty))
+              const Text(" *",
+                  style: TextStyle(color: Colors.red, fontSize: 18)),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: TextField(
+            onChanged: onChanged,
+            minLines: 1, // Starts with one line
+            maxLines: null, // Allows expansion
+            keyboardType: TextInputType.multiline,
+            decoration: const InputDecoration(
+              //           hintText: 'Enter text...',
+              contentPadding: EdgeInsets.all(8.0),
+              border: InputBorder.none, // Removes default border
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDropdown(String title, String? selectedValue, List<String> items,
       Function(String?) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title),
+        Row(
+          children: [
+            Text(title),
+            if (_showErrors &&
+                (selectedValue == null || selectedValue!.isEmpty))
+              const Text(" *",
+                  style: TextStyle(color: Colors.red, fontSize: 18)),
+          ],
+        ),
         const SizedBox(height: 8.0),
         DropdownButton<String>(
           value: selectedValue,
-          hint: Text('Select $title'),
+          //    hint: Text('Select $title'),
           items: items.map((value) {
             return DropdownMenuItem<String>(
               value: value,
@@ -179,7 +188,14 @@ class _CreateDateState extends State<CreateDate> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Date and Time'),
+        Row(
+          children: [
+            const Text('Date and Time'),
+            if (_showErrors && (_selectedDate == null || _selectedTime == null))
+              const Text(" *",
+                  style: TextStyle(color: Colors.red, fontSize: 18)),
+          ],
+        ),
         const SizedBox(height: 8.0),
         Row(
           children: [
@@ -206,21 +222,6 @@ class _CreateDateState extends State<CreateDate> {
     );
   }
 
-  Widget _buildTextField(
-      String title, String? value, Function(String) onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title),
-        const SizedBox(height: 8.0),
-        TextField(
-          onChanged: onChanged,
-          decoration: InputDecoration(hintText: 'Enter $title'),
-        ),
-      ],
-    );
-  }
-
   Widget _buildLocationSuggestions() {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 200),
@@ -237,42 +238,42 @@ class _CreateDateState extends State<CreateDate> {
     );
   }
 
-  void _openGoogleMaps(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
-    } else {
-      print("Could not open Google Maps");
-    }
-  }
-
-  Future<void> _selectLocation(Map<String, dynamic> selectedLocation) async {
-    String locationName = selectedLocation["description"];
-    _locationController.text = locationName;
-    setState(() => _locationSuggestions = []);
-
-    try {
-      final response = await Dio().get(
-        "https://maps.googleapis.com/maps/api/place/details/json",
-        queryParameters: {
-          "place_id": selectedLocation["place_id"],
-          "key": _googleApiKey,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        var location = response.data["result"]["geometry"]["location"];
-        double lat = location["lat"];
-        double lng = location["lng"];
-
-        setState(() {
-          _selectedLatLng = LatLng(lat, lng);
-          _googleMapsUrl =
-              "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName)}";
-        });
-      }
-    } catch (e) {
-      print("Error fetching location details: $e");
-    }
+  Widget _buildLocationInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Location'),
+            if (_showErrors && _locationController.text.isEmpty)
+              const Text(" *",
+                  style: TextStyle(color: Colors.red, fontSize: 18)),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        TextField(
+          controller: _locationController,
+          decoration: const InputDecoration(
+            hintText: 'Search for a location',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: null,
+          keyboardType: TextInputType.multiline,
+          onChanged: _getLocationSuggestions,
+        ),
+        if (_googleMapsUrl != null) ...[
+          const SizedBox(height: 8.0),
+          GestureDetector(
+            onTap: () => _openGoogleMaps(_googleMapsUrl!),
+            child: Text(
+              "📍 View Location on Google Maps",
+              style: TextStyle(
+                  color: Colors.blue, decoration: TextDecoration.underline),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Future<void> _getLocationSuggestions(String query) async {
@@ -311,6 +312,87 @@ class _CreateDateState extends State<CreateDate> {
     });
   }
 
+  Future<void> _selectLocation(Map<String, dynamic> selectedLocation) async {
+    String locationName = selectedLocation["description"];
+    _locationController.text = locationName;
+    setState(() => _locationSuggestions = []);
+
+    try {
+      final response = await Dio().get(
+        "https://maps.googleapis.com/maps/api/place/details/json",
+        queryParameters: {
+          "place_id": selectedLocation["place_id"],
+          "key": _googleApiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        var location = response.data["result"]["geometry"]["location"];
+        double lat = location["lat"];
+        double lng = location["lng"];
+
+        setState(() {
+          _selectedLatLng = LatLng(lat, lng);
+          _googleMapsUrl =
+              "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(locationName)}";
+        });
+      }
+    } catch (e) {
+      print("Error fetching location details: $e");
+    }
+  }
+
+  void _validateAndSaveDate() {
+    setState(() => _showErrors = true);
+
+    if (_selectedDateType == null ||
+        _selectedDate == null ||
+        _selectedTime == null ||
+        _selectedDuration == null ||
+        _selectedWhoPays == null ||
+        _selectedOpenTo == null ||
+        _description!.isEmpty ||
+        _locationController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Please complete all required fields before proceeding.'),
+          //backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    _saveDateToFirestore();
+  }
+
+  Future<void> _saveDateToFirestore() async {
+    // Create a Map<String, dynamic> to pass to DateHandler
+    Map<String, dynamic> dateData = {
+      'dateType': _selectedDateType!,
+      'date': Timestamp.fromDate(_selectedDate!),
+      'time': _selectedTime!.format(context),
+      'duration': _selectedDuration,
+      'whoPays': _selectedWhoPays,
+      'openTo': _selectedOpenTo,
+      'description': _description,
+      'location': _locationController.text,
+      'latitude': _selectedLatLng?.latitude,
+      'longitude': _selectedLatLng?.longitude,
+    };
+
+    _dateHandler.uploadDate(email: widget.email, dateData: dateData).then((_) {
+      Navigator.pop(context); // Close the screen on success
+    }).catchError((e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving date: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    });
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -329,25 +411,11 @@ class _CreateDateState extends State<CreateDate> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  Future<void> _saveDateToFirestore() async {
-    final docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.email)
-        .collection('dates')
-        .doc();
-
-    await docRef.set({
-      'date': Timestamp.fromDate(_selectedDate!),
-      'description': _description,
-      'location': _locationController.text,
-      'latitude': _selectedLatLng?.latitude,
-      'longitude': _selectedLatLng?.longitude,
-      'duration': _selectedDuration,
-      'whoPays': _selectedWhoPays,
-      'openTo': _selectedOpenTo,
-      'dateType': _selectedDateType,
-    });
-
-    Navigator.pop(context);
+  void _openGoogleMaps(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      print("Could not open Google Maps");
+    }
   }
 }

@@ -125,17 +125,6 @@ class FirebaseService {
 
   Future<void> deleteFileFromStorage(String fileUrl) async {
     try {
-      // Parse the file path from the URL
-      //String filePath = Uri.parse(fileUrl).pathSegments.join('/');
-      //String filePath = Uri.parse(fileUrl).path;
-/*
-      String filePath = fileUrl
-          .split('/o/')[1] // Get the part after '/o/'
-          .split('?')[0] // Remove query parameters
-          .replaceAll('%40', '.') // Replace encoded '@' with '.'
-          .replaceAll('%2F', '/'); // Decode forward slashes
-*/
-
       String filePath = Uri.decodeComponent(
         fileUrl.split('/o/')[1].split(
             '?')[0], // Extract portion after '/o/' and remove query params
