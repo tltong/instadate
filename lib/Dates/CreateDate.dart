@@ -379,6 +379,7 @@ class _CreateDateState extends State<CreateDate> {
       'location': _locationController.text,
       'latitude': _selectedLatLng?.latitude,
       'longitude': _selectedLatLng?.longitude,
+      'googleMapsUrl': _googleMapsUrl,
     };
 
     _dateHandler.uploadDate(email: widget.email, dateData: dateData).then((_) {

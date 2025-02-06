@@ -3,16 +3,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:instadate/FirebaseService.dart';
 import 'package:instadate/SignIn/SignUpScreen.dart';
 import 'package:instadate/Landing/LandingPage.dart';
-import 'package:instadate/Profile/ProfilePage.dart'; // Import ProfilePage
-import 'package:instadate/Profile/EditProfilePage.dart'; // Import EditProfilePage
-import 'package:instadate/SignIn/SignInScreen.dart'; // Import SignInScreen
+import 'package:instadate/Profile/ProfilePage.dart';
+import 'package:instadate/Profile/EditProfilePage.dart';
+import 'package:instadate/SignIn/SignInScreen.dart';
 import 'package:instadate/Dates/CreateDate.dart';
+import 'package:instadate/Dates/ViewDate.dart'; // Import ViewDate Page
 
 Future<void> main() async {
-  WidgetsFlutterBinding
-      .ensureInitialized(); // Ensures Flutter framework is initialized before Firebase
-  await Firebase.initializeApp(); // Initialize Firebase
-  await FirebaseService().initializeFirebase(); // Initialize Firestore
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await FirebaseService().initializeFirebase();
 
   runApp(const MyApp());
 }
@@ -43,6 +43,12 @@ class MyApp extends StatelessWidget {
         '/createdate': (context) => CreateDate(
               email: ModalRoute.of(context)!.settings.arguments as String,
             ),
+        '/viewdate': (context) => ViewDate(
+              dateId: (ModalRoute.of(context)!.settings.arguments
+                  as Map<String, String>)['dateId']!,
+              applicantEmail: (ModalRoute.of(context)!.settings.arguments
+                  as Map<String, String>)['applicantEmail']!,
+            ),
       },
     );
   }
@@ -58,6 +64,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final FirebaseService _firebaseService = FirebaseService();
   final _emailController = TextEditingController();
+  final _dateIdController = TextEditingController();
   Map<String, dynamic>? _userData;
 
   @override
@@ -71,26 +78,12 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // TEST Firestore DB
-            ElevatedButton(
-              onPressed: () async {
-                Map<String, dynamic> myData = {
-                  'name': 'John Doe',
-                  'age': 30,
-                  'city': 'New York',
-                };
-                await _firebaseService.uploadDataToFirestore(
-                    "docID", myData, 'users');
-              },
-              child: const Text('Test Firestore DB'),
-            ),
-
             // TEST Email sign up and user data upload
             ElevatedButton(
               onPressed: () async {
                 Navigator.pushNamed(context, '/signup');
               },
-              child: const Text('Test Email sign up'),
+              child: const Text('Test Email Sign Up'),
             ),
 
             Padding(
@@ -107,27 +100,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   ElevatedButton(
                     onPressed: () async {
                       String email = _emailController.text.trim();
-
                       if (email.isNotEmpty) {
-                        //full
-                        // print(email);
-                        // _userData = await _firebaseService.retrieveDataByDocId(
-                        //   email, 'users');
-                        // print('Name: ${_userData?['name']}');
-                        //if (_userData != null) {
-                        // Navigator.pushNamed(context, '/profile',
-                        //     arguments: _userData);       }
+                        Map<String, dynamic>? userData = await _firebaseService
+                            .retrieveDataByDocId(email, 'users');
 
-                        //minimal
-                        Map<String, dynamic> userData = {'email': email};
-                        userData = (await _firebaseService.retrieveDataByDocId(
-                            email, 'users'))!;
                         if (userData != null) {
                           Navigator.pushNamed(context, '/profile',
                               arguments: userData);
                         } else {
-                          // Handle case where user data is not found
-
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('User not found'),
@@ -142,21 +122,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   ElevatedButton(
                     onPressed: () async {
                       String email = _emailController.text.trim();
-
                       if (email.isNotEmpty) {
-                        Map<String, dynamic> userData = {'email': email};
-
-                        userData = (await _firebaseService.retrieveDataByDocId(
-                            email, 'users'))!;
+                        Map<String, dynamic>? userData = await _firebaseService
+                            .retrieveDataByDocId(email, 'users');
 
                         if (userData != null) {
                           userData['email'] = email;
-
                           Navigator.pushNamed(context, '/editprofile',
                               arguments: userData);
                         } else {
-                          // Handle case where user data is not found
-
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('User not found'),
@@ -178,7 +152,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   ElevatedButton(
                     onPressed: () {
                       String email = _emailController.text.trim();
-
                       if (email.isNotEmpty) {
                         Navigator.pushNamed(context, '/createdate',
                             arguments: email); // Pass email as argument
@@ -186,13 +159,46 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                     child: const Text('Create Date'),
                   ),
+                  const SizedBox(height: 30),
+
+                  // NEW TEXT FIELD FOR DATE ID
+                  TextField(
+                    controller: _dateIdController,
+                    decoration: const InputDecoration(
+                      labelText: 'Enter Date ID',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // NEW BUTTON TO VIEW DATE
+                  ElevatedButton(
+                    onPressed: () {
+                      String email = _emailController.text.trim();
+                      String dateId = _dateIdController.text.trim();
+
+                      if (email.isNotEmpty && dateId.isNotEmpty) {
+                        Navigator.pushNamed(context, '/viewdate', arguments: {
+                          'dateId': dateId,
+                          'applicantEmail': email,
+                        });
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                                Text('Please enter both Email and Date ID'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('View Date'),
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
