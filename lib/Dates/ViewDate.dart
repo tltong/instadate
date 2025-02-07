@@ -59,6 +59,10 @@ class _ViewDateState extends State<ViewDate> {
     }
   }
 
+  Future<String> _fetchCreatorName(String email) async {
+    return await _dateHandler.getCreatorName(email);
+  }
+
   /// **Apply for the Date**
   Future<void> _applyForDate() async {
     if (_messageController.text.trim().isEmpty) {
@@ -340,28 +344,34 @@ class _ViewDateState extends State<ViewDate> {
 
         // Creator's Response (Left Side) with Registered Name
         if (creatorResponse != null)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(creatorName,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.black54)),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(creatorResponse,
-                      style: const TextStyle(fontSize: 16)),
-                ),
-              ],
-            ),
-          ),
+          FutureBuilder<String>(
+            future: _fetchCreatorName(creatorEmail ?? ""),
+            builder: (context, snapshot) {
+              String creatorName = snapshot.data ?? "Date Creator";
 
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(creatorName,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black54)),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(creatorResponse,
+                          style: const TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         const SizedBox(height: 16),
 
         // Status of Application
