@@ -6,6 +6,7 @@ class ViewDateViewer extends StatefulWidget {
   final String dateId;
   final String applicantEmail;
   final String? creatorPhotoUrl; // ✅ Accept creator photo from ViewDate
+  final String? creatorName; // ✅ Accept creator name from ViewDate
 
   const ViewDateViewer({
     Key? key,
@@ -13,6 +14,7 @@ class ViewDateViewer extends StatefulWidget {
     required this.dateId,
     required this.applicantEmail,
     this.creatorPhotoUrl, // ✅ Constructor receives photo
+    this.creatorName, // ✅ Constructor receives name
   }) : super(key: key);
 
   @override
@@ -69,12 +71,13 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
     String? creatorResponse = widget.dateData['applicants']
         [widget.applicantEmail]?['messageToApplicant'];
     String? acceptedApplicant = widget.dateData['acceptedApplicant'];
-    String creatorName = widget.dateData['name'] ?? "Date Creator";
+
+    String creatorName = widget.creatorName ?? "Date Creator"; // ✅ FIXED
     String? creatorPhotoUrl = widget.creatorPhotoUrl; // ✅ Use passed photo URL
 
     print("📌 Building ViewDateViewer...");
+    print("📌 Creator Name: $creatorName");
     print("📌 Creator Email: $creatorEmail");
-    print("📌 Applicant Email: ${widget.applicantEmail}");
     print("📸 Creator Image in Chat: $creatorPhotoUrl");
 
     /// **Determine Application Status**
@@ -149,7 +152,7 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(creatorName,
+                  Text(creatorName, // ✅ FIXED Name Displayed Correctly
                       style:
                           const TextStyle(fontSize: 12, color: Colors.black54)),
                   Container(

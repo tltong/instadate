@@ -176,6 +176,7 @@ class _ViewDateState extends State<ViewDate> {
                       dateId: widget.dateId,
                       applicantEmail: widget.applicantEmail,
                       creatorPhotoUrl: creatorProfile?['photoUrl'],
+                      creatorName: creatorProfile?['name'],
                     ),
             ],
           ),
