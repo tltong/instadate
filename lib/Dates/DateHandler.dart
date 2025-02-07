@@ -240,24 +240,21 @@ class DateHandler {
     }
   }
 
-  /// **Fetch Creator's Name Using Email**
-  Future<String> getCreatorName(String email) async {
+  /// **Fetch Creator's Name & Profile Picture Using Email**
+
+  Future<Map<String, dynamic>> getCreatorInfo(String email) async {
+    print("🔍 Fetching full profile for email: $email");
+
     try {
-      print("🔍 Fetching creator name for email: $email");
+      Map<String, dynamic> userInfo =
+          await _firebaseService.retrieveDataByDocId(email, 'users') ?? {};
 
-      Map<String, dynamic>? userData =
-          await _firebaseService.retrieveDataByDocId(email, 'users');
+      print("✅ Retrieved Full User Profile: $userInfo");
 
-      if (userData != null && userData.containsKey('name')) {
-        print("✅ Creator name found: ${userData['name']}");
-        return userData['name'];
-      } else {
-        print("⚠️ Creator name not found, using default.");
-        return "Date Creator";
-      }
+      return userInfo; // Return full profile instead of just name & photoUrl
     } catch (e) {
-      print("❌ Error fetching creator name: $e");
-      return "Date Creator";
+      print("❌ Error fetching creator profile: $e");
+      return {};
     }
   }
 }
