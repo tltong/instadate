@@ -61,7 +61,7 @@ class _ViewDateState extends State<ViewDate> {
     print("🔍 Fetching full creator profile for email: $creatorEmail");
 
     Map<String, dynamic> profile =
-        await _dateHandler.getCreatorInfo(creatorEmail!);
+        await _dateHandler.getUserInfo(creatorEmail!);
 
     // Extract profile picture correctly
     String? photoUrl;

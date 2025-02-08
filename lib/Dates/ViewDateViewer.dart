@@ -26,17 +26,22 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
   final TextEditingController _messageController = TextEditingController();
   bool hasApplied = false;
   bool hasChatHistory = false;
+  Map<String, dynamic> dateData = {};
 
   @override
   void initState() {
     super.initState();
-    print("📌 [ViewDateViewer] - Initializing...");
-    print("📌 [ViewDateViewer] - Received dateData: ${widget.dateData}");
+    dateData = widget.dateData;
+    _processDateData();
+  }
 
-    Map<String, dynamic>? applicants = widget.dateData['applicants'];
+  /// **Process Date Data to Extract Relevant Info**
+  void _processDateData() {
+    print("📌 [ViewDateViewer] - Processing date data...");
+
+    Map<String, dynamic>? applicants = dateData['applicants'];
     if (applicants != null) {
       hasApplied = applicants.containsKey(widget.applicantEmail);
-      print("📌 [ViewDateViewer] - Applicants found: $applicants");
 
       String? applicantMessage =
           applicants[widget.applicantEmail]?['messageToCreator'];
@@ -47,22 +52,15 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
           (applicantMessage != null && applicantMessage.trim().isNotEmpty) ||
               (creatorResponse != null && creatorResponse.trim().isNotEmpty);
 
-      print("📌 [ViewDateViewer] - Applicant's Message: $applicantMessage");
-      print("📌 [ViewDateViewer] - Creator's Response: $creatorResponse");
       print("📌 [ViewDateViewer] - Chat History Exists: $hasChatHistory");
     } else {
       print("⚠️ [ViewDateViewer] - No applicants data found.");
     }
 
-    print("📌 [ViewDateViewer] - hasApplied: $hasApplied");
-
-    if (!hasChatHistory) {
-      print(
-          "📌 [ViewDateViewer] - No Chat History Found. Skipping chat section.");
-    }
+    setState(() {}); // Ensure UI updates after processing data
   }
 
-  /// **Apply for the Date**
+  /// **Apply for the Date & Refresh UI**
   Future<void> _applyForDate() async {
     if (_messageController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,8 +71,7 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
     }
 
     try {
-      print(
-          "📌 Applying for Date: ${widget.dateId}, Applicant: ${widget.applicantEmail}");
+      print("📌 Applying for Date: ${widget.dateId}");
 
       await _dateHandler.applyForDate(
         dateId: widget.dateId,
@@ -82,16 +79,17 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
         messageToCreator: _messageController.text.trim(),
       );
 
-      setState(() {
-        hasApplied = true;
-      });
+      print("✅ Successfully applied! Refreshing page...");
 
-      print("✅ Successfully applied for the date!");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You have successfully applied for this date!')),
-      );
+      // **Fetch latest data and refresh the page**
+      Map<String, dynamic>? updatedData =
+          await _dateHandler.getDateById(widget.dateId);
+      if (updatedData != null) {
+        setState(() {
+          dateData = updatedData;
+        });
+        _processDateData(); // Recompute chat history and status
+      }
     } catch (e) {
       print("❌ Error applying for date: $e");
     }
@@ -101,16 +99,11 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
   Widget build(BuildContext context) {
     print("🛠️ [ViewDateViewer] - Building UI...");
 
-    String creatorEmail = widget.dateData['email'] ?? "Unknown";
-    Map<String, dynamic>? applicants = widget.dateData['applicants'];
-
+    String creatorEmail = dateData['email'] ?? "Unknown";
+    Map<String, dynamic>? applicants = dateData['applicants'];
     String creatorName = widget.creatorName ?? "Date Creator";
     String? creatorPhotoUrl = widget.creatorPhotoUrl;
-    String? acceptedApplicant = widget.dateData['acceptedApplicant'];
-
-    print("📌 [ViewDateViewer] - Creator Email: $creatorEmail");
-    print("📌 [ViewDateViewer] - Current User Email: ${widget.applicantEmail}");
-    print("📌 [ViewDateViewer] - Accepted Applicant: $acceptedApplicant");
+    String? acceptedApplicant = dateData['acceptedApplicant'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,6 +112,8 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
           const Text("💬 Chat History",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+
+          // ✅ **Applicant's Message (Right Side)**
           if (applicants?[widget.applicantEmail]?['messageToCreator'] != null)
             Align(
               alignment: Alignment.centerRight,
@@ -140,7 +135,13 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
                 ],
               ),
             ),
-          if (applicants?[widget.applicantEmail]?['messageToApplicant'] != null)
+
+          // ✅ **Creator's Response (Left Side)**
+          if (applicants?[widget.applicantEmail]?['messageToApplicant'] !=
+                  null &&
+              applicants![widget.applicantEmail]['messageToApplicant']
+                  .trim()
+                  .isNotEmpty)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -180,6 +181,8 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
             ),
           const SizedBox(height: 16),
         ],
+
+        // ✅ **Application Status Display**
         Center(
           child: Column(
             children: [
@@ -216,6 +219,8 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
           ),
         ),
         const SizedBox(height: 16),
+
+        // ✅ **Apply Button (If Not Already Applied)**
         if (!hasApplied)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

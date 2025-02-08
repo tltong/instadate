@@ -242,7 +242,7 @@ class DateHandler {
 
   /// **Fetch Creator's Name & Profile Picture Using Email**
 
-  Future<Map<String, dynamic>> getCreatorInfo(String email) async {
+  Future<Map<String, dynamic>> getUserInfo(String email) async {
     print("🔍 Fetching full profile for email: $email");
 
     try {
