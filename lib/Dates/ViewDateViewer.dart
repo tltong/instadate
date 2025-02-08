@@ -5,16 +5,16 @@ class ViewDateViewer extends StatefulWidget {
   final Map<String, dynamic> dateData;
   final String dateId;
   final String applicantEmail;
-  final String? creatorPhotoUrl; // ✅ Accept creator photo from ViewDate
-  final String? creatorName; // ✅ Accept creator name from ViewDate
+  final String? creatorPhotoUrl;
+  final String? creatorName;
 
   const ViewDateViewer({
     Key? key,
     required this.dateData,
     required this.dateId,
     required this.applicantEmail,
-    this.creatorPhotoUrl, // ✅ Constructor receives photo
-    this.creatorName, // ✅ Constructor receives name
+    this.creatorPhotoUrl,
+    this.creatorName,
   }) : super(key: key);
 
   @override
@@ -25,12 +25,41 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
   final DateHandler _dateHandler = DateHandler();
   final TextEditingController _messageController = TextEditingController();
   bool hasApplied = false;
+  bool hasChatHistory = false;
 
   @override
   void initState() {
     super.initState();
-    hasApplied = (widget.dateData['applicants'] ?? {})
-        .containsKey(widget.applicantEmail);
+    print("📌 [ViewDateViewer] - Initializing...");
+    print("📌 [ViewDateViewer] - Received dateData: ${widget.dateData}");
+
+    Map<String, dynamic>? applicants = widget.dateData['applicants'];
+    if (applicants != null) {
+      hasApplied = applicants.containsKey(widget.applicantEmail);
+      print("📌 [ViewDateViewer] - Applicants found: $applicants");
+
+      String? applicantMessage =
+          applicants[widget.applicantEmail]?['messageToCreator'];
+      String? creatorResponse =
+          applicants[widget.applicantEmail]?['messageToApplicant'];
+
+      hasChatHistory =
+          (applicantMessage != null && applicantMessage.trim().isNotEmpty) ||
+              (creatorResponse != null && creatorResponse.trim().isNotEmpty);
+
+      print("📌 [ViewDateViewer] - Applicant's Message: $applicantMessage");
+      print("📌 [ViewDateViewer] - Creator's Response: $creatorResponse");
+      print("📌 [ViewDateViewer] - Chat History Exists: $hasChatHistory");
+    } else {
+      print("⚠️ [ViewDateViewer] - No applicants data found.");
+    }
+
+    print("📌 [ViewDateViewer] - hasApplied: $hasApplied");
+
+    if (!hasChatHistory) {
+      print(
+          "📌 [ViewDateViewer] - No Chat History Found. Skipping chat section.");
+    }
   }
 
   /// **Apply for the Date**
@@ -44,6 +73,9 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
     }
 
     try {
+      print(
+          "📌 Applying for Date: ${widget.dateId}, Applicant: ${widget.applicantEmail}");
+
       await _dateHandler.applyForDate(
         dateId: widget.dateId,
         applicantEmail: widget.applicantEmail,
@@ -53,6 +85,8 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
       setState(() {
         hasApplied = true;
       });
+
+      print("✅ Successfully applied for the date!");
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -65,128 +99,113 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
 
   @override
   Widget build(BuildContext context) {
-    String creatorEmail = widget.dateData['email'];
-    String? applicantMessage = widget.dateData['applicants']
-        [widget.applicantEmail]?['messageToCreator'];
-    String? creatorResponse = widget.dateData['applicants']
-        [widget.applicantEmail]?['messageToApplicant'];
+    print("🛠️ [ViewDateViewer] - Building UI...");
+
+    String creatorEmail = widget.dateData['email'] ?? "Unknown";
+    Map<String, dynamic>? applicants = widget.dateData['applicants'];
+
+    String creatorName = widget.creatorName ?? "Date Creator";
+    String? creatorPhotoUrl = widget.creatorPhotoUrl;
     String? acceptedApplicant = widget.dateData['acceptedApplicant'];
 
-    String creatorName = widget.creatorName ?? "Date Creator"; // ✅ FIXED
-    String? creatorPhotoUrl = widget.creatorPhotoUrl; // ✅ Use passed photo URL
-
-    print("📌 Building ViewDateViewer...");
-    print("📌 Creator Name: $creatorName");
-    print("📌 Creator Email: $creatorEmail");
-    print("📸 Creator Image in Chat: $creatorPhotoUrl");
-
-    /// **Determine Application Status**
-    String applicationStatus;
-    String statusMessage = "";
-    Color statusColor = Colors.orange; // Default color for pending
-
-    if (acceptedApplicant == null) {
-      applicationStatus = "⏳ Pending Review";
-      statusMessage = "Your application is under review.";
-    } else if (acceptedApplicant == widget.applicantEmail) {
-      applicationStatus = "🎉 Successful";
-      statusMessage =
-          "Congratulations! Remember to attend the date as planned. 📅";
-      statusColor = Colors.green;
-    } else {
-      applicationStatus = "❌ Failed";
-      statusMessage =
-          "Unfortunately, another applicant was selected. Don't give up! Keep applying for other dates. 💪";
-      statusColor = Colors.red;
-    }
+    print("📌 [ViewDateViewer] - Creator Email: $creatorEmail");
+    print("📌 [ViewDateViewer] - Current User Email: ${widget.applicantEmail}");
+    print("📌 [ViewDateViewer] - Accepted Applicant: $acceptedApplicant");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("💬 Chat History",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-
-        // ✅ **Applicant's Message (Right Side)**
-        if (applicantMessage != null && applicantMessage.trim().isNotEmpty)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text("You",
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                      color: Colors.blue[200],
-                      borderRadius: BorderRadius.circular(8)),
-                  child: Text(applicantMessage,
-                      style: const TextStyle(fontSize: 16)),
-                ),
-              ],
-            ),
-          ),
-
-        // ✅ **Creator's Response (Left Side) with Profile Picture**
-        if (creatorResponse != null && creatorResponse.trim().isNotEmpty)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ✅ **Show Creator's Photo in Chat**
-              CircleAvatar(
-                radius: 20,
-                backgroundImage:
-                    creatorPhotoUrl != null && creatorPhotoUrl.isNotEmpty
-                        ? NetworkImage(creatorPhotoUrl)
-                        : null, // ✅ Show profile image if available
-                backgroundColor: creatorPhotoUrl == null ? Colors.grey : null,
-                child: creatorPhotoUrl == null
-                    ? const Icon(Icons.person, color: Colors.white, size: 20)
-                    : null, // Default icon if no image
-              ),
-              const SizedBox(width: 8),
-
-              // **Chat Bubble**
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        if (hasChatHistory) ...[
+          const Text("💬 Chat History",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (applicants?[widget.applicantEmail]?['messageToCreator'] != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(creatorName, // ✅ FIXED Name Displayed Correctly
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.black54)),
+                  const Text("You",
+                      style: TextStyle(fontSize: 12, color: Colors.black54)),
                   Container(
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(creatorResponse,
+                        color: Colors.blue[200],
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                        applicants![widget.applicantEmail]['messageToCreator'],
                         style: const TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
-            ],
-          ),
-
-        const SizedBox(height: 16),
-
-        // ✅ **Application Status Display**
+            ),
+          if (applicants?[widget.applicantEmail]?['messageToApplicant'] != null)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundImage:
+                      creatorPhotoUrl != null && creatorPhotoUrl.isNotEmpty
+                          ? NetworkImage(creatorPhotoUrl)
+                          : null,
+                  backgroundColor: creatorPhotoUrl == null ? Colors.grey : null,
+                  child: creatorPhotoUrl == null
+                      ? const Icon(Icons.person, color: Colors.white, size: 20)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(creatorName,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black54)),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                          applicants![widget.applicantEmail]
+                              ['messageToApplicant'],
+                          style: const TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          const SizedBox(height: 16),
+        ],
         Center(
           child: Column(
             children: [
               Text(
-                "📌 Application Status: $applicationStatus",
+                acceptedApplicant == widget.applicantEmail
+                    ? "🎉 Successful"
+                    : acceptedApplicant == null
+                        ? "⏳ Pending Review"
+                        : "❌ Failed",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: statusColor,
+                  color: acceptedApplicant == widget.applicantEmail
+                      ? Colors.green
+                      : acceptedApplicant == null
+                          ? Colors.orange
+                          : Colors.red,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                statusMessage,
+                acceptedApplicant == widget.applicantEmail
+                    ? "Congratulations! Remember to attend the date as planned. 📅"
+                    : acceptedApplicant == null
+                        ? "Your application is under review."
+                        : "Unfortunately, another applicant was selected. Keep applying for other dates. 💪",
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 14,
@@ -196,10 +215,7 @@ class _ViewDateViewerState extends State<ViewDateViewer> {
             ],
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // ✅ **Apply Button (If Not Already Applied)**
         if (!hasApplied)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
